@@ -3,79 +3,123 @@ import '../models/planet.dart';
 final List<Planet> planetList = [
   Planet(
     name: "Sistem Tata Surya",
-    description: "Sistem Tata Surya kita terdiri dari Matahari dan segala sesuatu yang terikat padanya oleh gravitasi.",
+    type: "Sistem planet",
+    diameter: "-",
+    rotationPeriod: "-",
     distance: "-",
-    cameraOrbit: "0deg 60deg 20m", // Zoom out maksimal untuk melihat semua planet
-    cameraTarget: "0m 0m 0m", // Fokus di tengah (Matahari)
+    description:
+        "Tata Surya adalah sistem gravitasi yang berpusat pada Matahari, berisi delapan planet utama, satelit alami, asteroid, komet, dan debu antariksa. Model ini disusun sebagai visual edukatif agar perbandingan orbit, posisi, dan karakter planet mudah diamati dalam AR.",
+    cameraOrbit: "0deg 30deg 56m",
+    cameraTarget: "0m 0m 10m",
   ),
   Planet(
     name: "Matahari",
-    description: "Bintang di pusat Tata Surya. Merupakan bola gas panas raksasa yang menjadi sumber cahaya dan panas utama bagi Bumi.",
-    distance: "0 km",
-    cameraOrbit: "0deg 75deg 2.0m", // Sedikit lebih dekat
+    type: "Bintang deret utama tipe G",
+    diameter: "1.392.700 km",
+    rotationPeriod: "Sekitar 25-35 hari",
+    distance: "Pusat Tata Surya",
+    description:
+        "Matahari menyimpan lebih dari 99% massa Tata Surya dan menghasilkan energi melalui fusi hidrogen di intinya. Cahaya dan panasnya mengatur iklim, musim, serta kestabilan orbit planet-planet.",
+    cameraOrbit: "28deg 68deg 7m",
     cameraTarget: "0m 0m 0m",
   ),
   Planet(
     name: "Merkurius",
-    description: "Planet terkecil dan terdekat dengan Matahari. Permukaannya dipenuhi kawah mirip Bulan dan mengalami perubahan suhu yang sangat ekstrem.",
-    distance: "57.9 juta km",
-    cameraOrbit: "45deg 75deg 0.5m", // Radius zoom 
-    cameraTarget: "0m 0m 9.69m", // Koordinat asli dari GLB pada t=0
+    type: "Planet kebumian",
+    diameter: "4.879 km",
+    rotationPeriod: "58,6 hari Bumi",
+    distance: "57,9 juta km dari Matahari",
+    description:
+        "Merkurius adalah planet terkecil sekaligus yang paling dekat dengan Matahari. Permukaannya berbatu dan penuh kawah, dengan perbedaan suhu ekstrem karena atmosfernya sangat tipis.",
+    cameraOrbit: "20deg 68deg 3.2m",
+    cameraTarget: "0.17m 0m 9.69m",
   ),
   Planet(
     name: "Venus",
-    description: "Planet terpanas di Tata Surya karena efek rumah kaca dari atmosfer tebalnya yang beracun. Sering disebut sebagai 'Bintang Kejora'.",
-    distance: "108.2 juta km",
-    cameraOrbit: "90deg 75deg 0.6m", 
-    cameraTarget: "0m 0m 12.23m", // Koordinat asli
+    type: "Planet kebumian",
+    diameter: "12.104 km",
+    rotationPeriod: "243 hari Bumi, retrograde",
+    distance: "108,2 juta km dari Matahari",
+    description:
+        "Venus memiliki atmosfer karbon dioksida yang sangat tebal sehingga efek rumah kaca membuatnya menjadi planet terpanas. Rotasinya berlawanan arah dibanding sebagian besar planet lain.",
+    cameraOrbit: "35deg 68deg 4m",
+    cameraTarget: "0.43m 0m 12.23m",
   ),
   Planet(
     name: "Bumi",
-    description: "Planet ketiga dari Matahari dan satu-satunya tempat di alam semesta yang diketahui memiliki kehidupan. Sekitar 71% permukaannya tertutup air.",
-    distance: "149.6 juta km",
-    cameraOrbit: "135deg 75deg 0.6m", 
-    cameraTarget: "0m 0m 16.11m", // Koordinat asli
+    type: "Planet kebumian",
+    diameter: "12.742 km",
+    rotationPeriod: "23 jam 56 menit",
+    distance: "149,6 juta km dari Matahari",
+    description:
+        "Bumi adalah satu-satunya planet yang diketahui memiliki kehidupan. Lautan cair, atmosfer kaya nitrogen-oksigen, medan magnet, dan jarak ideal dari Matahari membuatnya stabil untuk ekosistem kompleks.",
+    cameraOrbit: "55deg 67deg 4.2m",
+    cameraTarget: "0m 0m 16.11m",
   ),
   Planet(
     name: "Bulan",
-    description: "Satelit alami satu-satunya milik Bumi. Bulan adalah objek terterang kedua di langit malam dan berpengaruh besar terhadap pasang surut air laut di Bumi.",
+    type: "Satelit alami Bumi",
+    diameter: "3.474 km",
+    rotationPeriod: "27,3 hari Bumi",
     distance: "384.400 km dari Bumi",
-    cameraOrbit: "140deg 70deg 0.3m", // Zoom dekat ke Bulan
-    cameraTarget: "0m 0.5m 17m", // Dekat Bumi, sedikit di atas bidang orbit
+    description:
+        "Bulan adalah satelit alami Bumi yang terkunci pasang surut, sehingga sisi yang sama selalu menghadap Bumi. Gravitasinya membantu membentuk pasang surut laut dan menstabilkan kemiringan sumbu Bumi.",
+    cameraOrbit: "70deg 64deg 2.3m",
+    cameraTarget: "-0.04m 6.26m 12.91m",
   ),
   Planet(
     name: "Mars",
-    description: "Dijuluki Planet Merah karena debu besi oksida (karat) di permukaannya. Mars memiliki gunung berapi terbesar di Tata Surya bernama Olympus Mons.",
-    distance: "227.9 juta km",
-    cameraOrbit: "180deg 75deg 0.5m", 
-    cameraTarget: "0m 0m 20.45m", // Koordinat asli
+    type: "Planet kebumian",
+    diameter: "6.779 km",
+    rotationPeriod: "24 jam 37 menit",
+    distance: "227,9 juta km dari Matahari",
+    description:
+        "Mars dikenal sebagai Planet Merah karena permukaannya kaya besi oksida. Planet ini memiliki lembah raksasa, tudung es kutub, dan Olympus Mons, gunung berapi terbesar yang diketahui di Tata Surya.",
+    cameraOrbit: "100deg 68deg 3.6m",
+    cameraTarget: "0m 0m 20.45m",
   ),
   Planet(
     name: "Jupiter",
-    description: "Planet terbesar di Tata Surya. Merupakan raksasa gas yang terkenal dengan 'Bintik Merah Raksasa', sebuah badai besar yang telah berlangsung ratusan tahun.",
-    distance: "778.5 juta km",
-    cameraOrbit: "225deg 75deg 1.5m", 
-    cameraTarget: "0m 0m 28.77m", // Koordinat asli
+    type: "Raksasa gas",
+    diameter: "139.820 km",
+    rotationPeriod: "9 jam 56 menit",
+    distance: "778,5 juta km dari Matahari",
+    description:
+        "Jupiter adalah planet terbesar dengan atmosfer hidrogen-helium yang dinamis. Bintik Merah Raksasa merupakan badai antiklonik berukuran sangat besar yang telah diamati selama berabad-abad.",
+    cameraOrbit: "140deg 68deg 8.5m",
+    cameraTarget: "0m 0m 28.77m",
   ),
   Planet(
     name: "Saturnus",
-    description: "Planet raksasa gas yang terkenal dengan sistem cincinnya yang menakjubkan dan kompleks, sebagian besar terbuat dari bongkahan es dan batuan.",
-    distance: "1.43 miliar km",
-    cameraOrbit: "270deg 75deg 2.5m", 
-    cameraTarget: "0m 0m 36.61m", // Koordinat asli
+    type: "Raksasa gas bercincin",
+    diameter: "116.460 km",
+    rotationPeriod: "10 jam 42 menit",
+    distance: "1,43 miliar km dari Matahari",
+    description:
+        "Saturnus memiliki sistem cincin paling mencolok, tersusun dari partikel es dan batuan. Kerapatannya rendah, tetapi sistem satelit dan cincinnya menjadikannya salah satu objek paling kompleks di Tata Surya.",
+    cameraOrbit: "190deg 68deg 10m",
+    cameraTarget: "0m 0m 36.61m",
   ),
   Planet(
     name: "Uranus",
-    description: "Planet es raksasa yang berputar miring (hampir 90 derajat) di porosnya. Uranus memiliki suhu atmosfer paling dingin di antara planet lainnya.",
-    distance: "2.87 miliar km",
-    cameraOrbit: "315deg 75deg 1.2m", 
-    cameraTarget: "0m 0m 44.26m", // Koordinat asli
+    type: "Raksasa es",
+    diameter: "50.724 km",
+    rotationPeriod: "17 jam 14 menit, retrograde",
+    distance: "2,87 miliar km dari Matahari",
+    description:
+        "Uranus adalah raksasa es dengan sumbu rotasi miring sekitar 98 derajat, membuatnya tampak berputar menyamping. Atmosfer metana memberi warna biru kehijauan yang khas.",
+    cameraOrbit: "240deg 68deg 6.3m",
+    cameraTarget: "0m 0m 44.26m",
   ),
   Planet(
     name: "Neptunus",
-    description: "Planet terjauh dari Matahari. Merupakan planet es raksasa yang gelap, sangat dingin, dan memiliki angin puyuh supersonik tercepat di Tata Surya.",
-    distance: "4.50 miliar km",
-    cameraOrbit: "360deg 75deg 1.2m", 
-    cameraTarget: "0m 0m 49.92m", // Koordinat asli
+    type: "Raksasa es",
+    diameter: "49.244 km",
+    rotationPeriod: "16 jam 6 menit",
+    distance: "4,50 miliar km dari Matahari",
+    description:
+        "Neptunus adalah planet terjauh dari Matahari dan dikenal dengan angin atmosfer yang sangat cepat. Warna birunya berasal dari metana, sementara cuacanya menunjukkan badai gelap yang berubah seiring waktu.",
+    cameraOrbit: "300deg 68deg 6.3m",
+    cameraTarget: "0m 0m 49.92m",
   ),
 ];
