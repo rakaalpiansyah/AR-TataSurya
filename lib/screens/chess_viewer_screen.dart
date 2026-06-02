@@ -19,18 +19,11 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
     'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp',
     'wr', 'wn', 'wb', 'wq', 'wk', 'wb', 'wn', 'wr',
   ];
-  static const _symbols = {
-    'wk': '♔', 'wq': '♕', 'wr': '♖', 'wb': '♗', 'wn': '♘', 'wp': '♙',
-    'bk': '♚', 'bq': '♛', 'br': '♜', 'bb': '♝', 'bn': '♞', 'bp': '♟',
-  };
-
   final List<String> _board = List.of(_initial);
   final List<_Move> _history = [];
   dynamic _webViewController;
   int? _selected;
   bool _whiteTurn = true;
-  bool _showBoard = false;
-  bool _showArControls = true;
   bool _modelReady = false;
   String _modelStatus = 'Menyiapkan 32 bidak 3D...';
   int? _enPassantTarget;
@@ -47,16 +40,6 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
         backgroundColor: const Color(0xFF11110F),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          IconButton(
-            tooltip: _showBoard ? 'Sembunyikan papan kontrol' : 'Tampilkan papan kontrol',
-            onPressed: () => setState(() => _showBoard = !_showBoard),
-            icon: Icon(_showBoard ? Icons.visibility_off_outlined : Icons.grid_view_rounded),
-          ),
-          IconButton(
-            tooltip: _showArControls ? 'Putar kamera' : 'Mainkan bidak 3D',
-            onPressed: () => setState(() => _showArControls = !_showArControls),
-            icon: Icon(_showArControls ? Icons.pan_tool_alt_rounded : Icons.touch_app_rounded),
-          ),
           IconButton(tooltip: 'Ulangi pertandingan', onPressed: _reset, icon: const Icon(Icons.restart_alt_rounded)),
         ],
       ),
@@ -81,6 +64,7 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
               JavascriptChannel(
                 'ChessTapChannel',
                 onMessageReceived: (message) {
+                  debugPrint('[AR Chess Tap] square=${message.message}');
                   final index = int.tryParse(message.message);
                   if (index != null && index >= 0 && index < 64) {
                     _tapSquare(index);
@@ -98,6 +82,12 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
                         ? 'Pertandingan berlangsung'
                         : message.message;
                   });
+                  if (_modelReady) {
+                    _sync3dHighlights();
+                    Future<void>.delayed(const Duration(milliseconds: 350), () {
+                      if (mounted) _sync3dHighlights();
+                    });
+                  }
                 },
               ),
             },
@@ -120,7 +110,7 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
             right: 14,
             child: IgnorePointer(
               child: Text(
-                'Sentuh bidak 3D, lalu sentuh petak tujuan pada papan.',
+                'Sentuh bidak 3D, lalu pilih petak bercahaya pada papan 3D.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: .76),
@@ -131,49 +121,35 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
               ),
             ),
           ),
-          if (_showArControls && _modelReady)
-            Align(
-              alignment: Alignment.center,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 30),
-                child: Transform.rotate(
-                  angle: -0.13,
-                  child: SizedBox(
-                    width: MediaQuery.sizeOf(context).width * .79,
-                    child: AspectRatio(
-                      aspectRatio: 1,
-                      child: GridView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 8),
-                        itemCount: 64,
-                        itemBuilder: (_, index) => _arSquare(index, legalTargets),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          if (_showBoard)
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: SafeArea(
-                minimum: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+          if (_selected != null)
+            Positioned(
+              left: 14,
+              right: 14,
+              bottom: 24,
+              child: Center(
                 child: Container(
-                  constraints: const BoxConstraints(maxWidth: 430),
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.fromLTRB(14, 7, 8, 7),
                   decoration: BoxDecoration(
-                    color: const Color(0xEE171711),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.amberAccent.withValues(alpha: .32)),
+                    color: const Color(0xE6171711),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Colors.amberAccent.withValues(alpha: .65)),
                   ),
-                  child: AspectRatio(
-                    aspectRatio: 1,
-                    child: GridView.builder(
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 8),
-                      itemCount: 64,
-                      itemBuilder: (_, index) => _square(index, legalTargets),
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Pilih petak cyan pada papan 3D',
+                        style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(width: 6),
+                      InkWell(
+                        onTap: () {
+                          setState(() => _selected = null);
+                          _sync3dHighlights();
+                        },
+                        child: const Icon(Icons.close_rounded, color: Colors.white70, size: 20),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -182,87 +158,6 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
       ),
     );
   }
-
-  Widget _square(int index, Set<int> legalTargets) {
-    final row = index ~/ 8;
-    final col = index % 8;
-    final piece = _board[index];
-    final selected = index == _selected;
-    final legal = legalTargets.contains(index);
-    final light = (row + col).isEven;
-    return InkWell(
-      onTap: () => _tapSquare(index),
-      child: Container(
-        decoration: BoxDecoration(
-          color: selected
-              ? Colors.amber
-              : light ? const Color(0xFFE8D6B0) : const Color(0xFF785B3D),
-          border: legal ? Border.all(color: Colors.cyanAccent, width: 3) : null,
-        ),
-        child: Stack(
-          children: [
-            if (legal && piece.isEmpty)
-              const Center(child: Icon(Icons.circle, size: 13, color: Color(0x9900FFFF))),
-            if (piece.isNotEmpty)
-              Center(
-                child: Text(
-                  _symbols[piece]!,
-                  style: TextStyle(
-                    fontSize: 34,
-                    height: 1,
-                    color: piece[0] == 'w' ? Colors.white : Colors.black,
-                    shadows: const [Shadow(color: Colors.black54, blurRadius: 2)],
-                  ),
-                ),
-              ),
-            if (col == 0)
-              Positioned(top: 2, left: 3, child: Text('${8 - row}', style: _coordStyle(light))),
-            if (row == 7)
-              Positioned(bottom: 1, right: 3, child: Text(String.fromCharCode(97 + col), style: _coordStyle(light))),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _arSquare(int index, Set<int> legalTargets) {
-    final piece = _board[index];
-    final selected = index == _selected;
-    final legal = legalTargets.contains(index);
-    final selectable = piece.isNotEmpty && (piece[0] == 'w') == _whiteTurn;
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onTap: () => _tapSquare(index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        margin: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: selected
-              ? Colors.amber.withValues(alpha: .62)
-              : legal
-                  ? Colors.cyanAccent.withValues(alpha: .48)
-                  : Colors.transparent,
-          borderRadius: BorderRadius.circular(50),
-          border: legal
-              ? Border.all(color: Colors.white, width: 1.5)
-              : selectable
-                  ? Border.all(color: Colors.amberAccent.withValues(alpha: .58), width: 1.2)
-                  : null,
-        ),
-        child: legal
-            ? const Icon(Icons.arrow_downward_rounded, color: Colors.white, size: 19)
-            : selectable
-                ? const Icon(Icons.circle, color: Color(0x99FFD740), size: 9)
-                : null,
-      ),
-    );
-  }
-
-  TextStyle _coordStyle(bool light) => TextStyle(
-    color: light ? const Color(0xFF785B3D) : const Color(0xFFE8D6B0),
-    fontSize: 10,
-    fontWeight: FontWeight.w800,
-  );
 
   void _tapSquare(int index) {
     if (!_modelReady) return;
@@ -273,7 +168,7 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
     }
     final ownPiece = piece.isNotEmpty && (piece[0] == 'w') == _whiteTurn;
     setState(() => _selected = ownPiece ? index : null);
-    _runJs('window.selectChessSquare?.(${ownPiece ? index : 'null'});');
+    _sync3dHighlights();
   }
 
   Future<void> _move(int from, int to) async {
@@ -316,6 +211,7 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
       _whiteTurn = !_whiteTurn;
     });
     _runJs('window.moveChessPiece?.($from, $to, $captureSquare, ${rookFrom ?? 'null'}, ${rookTo ?? 'null'});');
+    _sync3dHighlights();
   }
 
   void _undo() {
@@ -337,6 +233,7 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
       _whiteTurn = !_whiteTurn;
     });
     _runJs('window.undoChessMove?.();');
+    _sync3dHighlights();
   }
 
   void _reset() {
@@ -351,10 +248,20 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
         ..addAll({'K', 'Q', 'k', 'q'});
     });
     _runJs('window.resetChessBoard?.();');
+    _sync3dHighlights();
   }
 
   void _runJs(String command) {
     _webViewController?.runJavaScript(command);
+  }
+
+  void _sync3dHighlights() {
+    final legal = _selected == null ? <int>[] : _legalMovesFor(_selected!);
+    final color = _whiteTurn ? 'w' : 'b';
+    final selectable = List.generate(64, (index) => index)
+        .where((index) => _board[index].startsWith(color))
+        .toList();
+    _runJs('window.setChessHighlights?.(${_selected ?? 'null'}, ${legal.toString()}, ${selectable.toString()});');
   }
 
   List<int> _legalMovesFor(int from) {
@@ -605,6 +512,80 @@ const _chessJs = r'''
   clipInitialNames.forEach((name, square) => {
     if (name) clipState.origins.set(name, square);
   });
+  const addBoardHotspots = () => {
+    if (viewer.querySelector('[data-chess-hotspot]')) return;
+    for (let square = 0; square < 64; square++) {
+      const row = Math.floor(square / 8);
+      const col = square % 8;
+      const button = document.createElement('button');
+      button.slot = `hotspot-chess-${square}`;
+      button.dataset.chessHotspot = String(square);
+      button.dataset.basePosition = `${-126 + col * 36}m -8m ${126 - row * 36}m`;
+      button.dataset.position = button.dataset.basePosition;
+      button.setAttribute('aria-label', `Petak ${square}`);
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        console.log('[AR Chess] Hotspot ditekan:', square);
+        window.ChessTapChannel?.postMessage(String(square));
+      });
+      viewer.appendChild(button);
+    }
+    const style = document.createElement('style');
+    style.textContent = `
+      [data-chess-hotspot] {
+        width: 30px; height: 30px; border: 0; padding: 0;
+        background: transparent; border-radius: 50%; pointer-events: none;
+      }
+      [data-chess-hotspot].active { pointer-events: none; }
+      [data-chess-hotspot].active:not(.legal):not(.selected) {
+        opacity: 0;
+      }
+      [data-chess-hotspot].selected {
+        background: rgba(255, 193, 7, .78);
+        border: 2px solid #ffd740;
+        box-shadow: 0 0 10px rgba(255, 193, 7, .92);
+      }
+      [data-chess-hotspot].legal {
+        background: rgba(0, 229, 255, .82);
+        border: 2px solid #18ffff;
+        box-shadow: 0 0 11px rgba(0, 229, 255, .95);
+      }
+      [data-chess-hotspot].legal::after {
+        content: '•'; color: white; font-size: 22px; line-height: 22px; font-weight: 900;
+      }
+    `;
+    document.head.appendChild(style);
+  };
+  window.setChessHighlights = (selected, legal = [], selectable = []) => {
+    addBoardHotspots();
+    const legalSet = new Set(legal);
+    const selectableSet = new Set(selectable);
+    viewer.querySelectorAll('[data-chess-hotspot]').forEach((button) => {
+      const square = Number(button.dataset.chessHotspot);
+      button.dataset.position = button.dataset.basePosition;
+      button.classList.toggle('active', legalSet.has(square) || selectableSet.has(square));
+      button.classList.toggle('selected', square === selected);
+      button.classList.toggle('legal', legalSet.has(square));
+    });
+  };
+  const squareFromHit = (hit) => {
+    const point = hit?.position;
+    if (!point) return null;
+    // The board root applies a 10x world scale: each square is 36 scene units.
+    const col = Math.floor((point.x + 144) / 36);
+    const row = Math.floor((144 - point.z) / 36);
+    if (row < 0 || row > 7 || col < 0 || col > 7) return null;
+    return row * 8 + col;
+  };
+  viewer.addEventListener('click', (event) => {
+    const rect = viewer.getBoundingClientRect();
+    const hit =
+      viewer.positionAndNormalFromPoint?.(event.clientX, event.clientY) ||
+      viewer.queryHitTest?.(event.clientX - rect.left, event.clientY - rect.top);
+    const square = squareFromHit(hit);
+    console.log('[AR Chess] Hit-test:', square, hit?.position || null);
+    if (square !== null) window.ChessTapChannel?.postMessage(String(square));
+  });
   const pumpMixer = (scene, duration = 460) => {
     const started = performance.now();
     let previous = started;
@@ -694,6 +675,7 @@ const _chessJs = r'''
     setTimeout(() => { viewer.src = source; }, 0);
   };
   const markClipReady = () => {
+    addBoardHotspots();
     console.log('[AR Chess] Clip GLB siap digunakan.');
     if (window.ChessReadyChannel) window.ChessReadyChannel.postMessage('ready');
   };

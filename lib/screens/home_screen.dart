@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'ar_viewer_screen.dart';
 import 'chess_viewer_screen.dart';
-import 'pc_viewer_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -44,18 +43,6 @@ class HomeScreen extends StatelessWidget {
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const ArViewerScreen()),
-                  );
-                },
-              ),
-              const SizedBox(height: 14),
-              _ModeCard(
-                title: 'PC Hardware AR',
-                subtitle: 'Komponen PC, exploded view, dan fungsi setiap part.',
-                icon: Icons.memory_rounded,
-                color: Colors.cyanAccent,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const PcViewerScreen()),
                   );
                 },
               ),
