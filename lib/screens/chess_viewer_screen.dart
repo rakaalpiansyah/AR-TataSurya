@@ -650,7 +650,7 @@ const _chessJs = r'''
     clipState.squares[from] = null;
     if (captureSquare !== to) clipState.squares[captureSquare] = null;
     if (rook) {
-      setTimeout(() => playMoveClip(rook, rookTo), 410);
+      playMoveClip(rook, rookTo);
       clipState.squares[rookTo] = rook;
       clipState.squares[rookFrom] = null;
     }
@@ -664,7 +664,7 @@ const _chessJs = r'''
     clipState.squares[move.to] = null;
     clipState.squares[move.captureSquare] = move.captured;
     if (move.rook) {
-      setTimeout(() => playMoveClip(move.rook, move.rookFrom), 410);
+      playMoveClip(move.rook, move.rookFrom);
       clipState.squares[move.rookFrom] = move.rook;
       clipState.squares[move.rookTo] = null;
     }
