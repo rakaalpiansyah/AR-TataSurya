@@ -625,7 +625,11 @@ const _chessJs = r'''
     const origin = clipState.origins.get(name);
     const rowDelta = Math.floor(targetSquare / 8) - Math.floor(origin / 8);
     const colDelta = (targetSquare % 8) - (origin % 8);
-    if (rowDelta === 0 && colDelta === 0) return;
+    if (rowDelta === 0 && colDelta === 0) {
+      if (playAction(name, `home|${name}`, 'move')) return;
+      console.log('[AR Chess] Clip home tidak ditemukan:', name);
+      return;
+    }
     const clipName = `move|${name}|${rowDelta}|${colDelta}`;
     if (playAction(name, clipName, 'move')) return;
     console.log('[AR Chess] Fallback viewer.play untuk clip:', clipName);

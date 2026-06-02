@@ -48,6 +48,7 @@ for (const { node, index } of pieceRoots) {
       addMoveAnimation(node, index, rowDelta, colDelta);
     }
   }
+  addHomeAnimation(node, index);
   addScaleAnimation(`hide|${node.name}`, index, node.scale, [0, 0, 0]);
   addScaleAnimation(`show|${node.name}`, index, [0, 0, 0], node.scale);
 }
@@ -65,6 +66,20 @@ function addMoveAnimation(node, nodeIndex, rowDelta, colDelta) {
   ]), 'VEC3');
   json.animations.push({
     name: `move|${node.name}|${rowDelta}|${colDelta}`,
+    samplers: [{ input: timeAccessor, output: translationAccessor, interpolation: 'LINEAR' }],
+    channels: [{ sampler: 0, target: { node: nodeIndex, path: 'translation' } }],
+  });
+}
+
+function addHomeAnimation(node, nodeIndex) {
+  const start = node.translation;
+  const timeAccessor = addFloatAccessor(new Float32Array([0, 0.38]), 'SCALAR');
+  const translationAccessor = addFloatAccessor(new Float32Array([
+    start[0], start[1], start[2],
+    start[0], start[1], start[2],
+  ]), 'VEC3');
+  json.animations.push({
+    name: `home|${node.name}`,
     samplers: [{ input: timeAccessor, output: translationAccessor, interpolation: 'LINEAR' }],
     channels: [{ sampler: 0, target: { node: nodeIndex, path: 'translation' } }],
   });
