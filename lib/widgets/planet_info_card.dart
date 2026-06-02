@@ -21,7 +21,7 @@ class PlanetInfoCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       constraints: BoxConstraints(
-        maxHeight: size.height * 0.28,
+        maxHeight: size.height * 0.25,
         maxWidth: 560,
       ),
       margin: EdgeInsets.zero,
@@ -107,7 +107,7 @@ class PlanetInfoCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     planet.description,
-                    maxLines: 4,
+                    maxLines: 5,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 13,
