@@ -1,3 +1,8 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 
@@ -8,7 +13,10 @@ class ChessViewerScreen extends StatefulWidget {
   State<ChessViewerScreen> createState() => _ChessViewerScreenState();
 }
 
+enum _NetworkRole { local, host, guest }
+
 class _ChessViewerScreenState extends State<ChessViewerScreen> {
+  static const _lanPort = 40464;
   static const _initial = [
     'br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br',
     'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp',
@@ -21,18 +29,55 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
   ];
   final List<String> _board = List.of(_initial);
   final List<_Move> _history = [];
+  final Random _random = Random();
+  ServerSocket? _lanServer;
+  Socket? _lanSocket;
+  StreamSubscription<Socket>? _lanServerSubscription;
+  StreamSubscription<String>? _lanSocketSubscription;
   dynamic _webViewController;
+  int _sceneRevision = 0;
+  int _gameGeneration = 0;
   int? _selected;
   bool _whiteTurn = true;
+  bool _playVsBot = false;
+  bool _botThinking = false;
+  bool _closingLan = false;
+  bool _disposed = false;
+  _NetworkRole _networkRole = _NetworkRole.local;
+  String _networkStatus = 'Offline';
   bool _modelReady = false;
   String _modelStatus = 'Menyiapkan 32 bidak 3D...';
   int? _enPassantTarget;
   final Set<String> _castlingRights = {'K', 'Q', 'k', 'q'};
 
+  bool get _isNetworkGame => _networkRole != _NetworkRole.local;
+  bool get _isLanConnected => _lanSocket != null;
+  String get _modeLabel {
+    if (_networkRole == _NetworkRole.host) return 'Wi-Fi Host Putih';
+    if (_networkRole == _NetworkRole.guest) return 'Wi-Fi Tamu Hitam';
+    return _playVsBot ? 'Mode Bot' : 'Mode Teman';
+  }
+  bool get _isLocalNetworkTurn {
+    if (_networkRole == _NetworkRole.local) return true;
+    if (!_isLanConnected) return false;
+    return _networkRole == _NetworkRole.host ? _whiteTurn : !_whiteTurn;
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _disconnectLan(updateState: false);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final legalTargets = _selected == null ? <int>{} : _legalMovesFor(_selected!).toSet();
-    final status = _gameStatus();
+    final gameStatus = _gameStatus();
+    final status = !_modelReady
+        ? _modelStatus
+        : _botThinking
+            ? 'Bot sedang berpikir...'
+            : '$_modeLabel | $gameStatus';
     return Scaffold(
       backgroundColor: const Color(0xFF070706),
       appBar: AppBar(
@@ -40,12 +85,36 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
         backgroundColor: const Color(0xFF11110F),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          IconButton(
+            tooltip: 'Multiplayer Wi-Fi',
+            onPressed: _showLanDialog,
+            icon: Icon(_isNetworkGame ? Icons.wifi_rounded : Icons.wifi_tethering_rounded),
+          ),
+          PopupMenuButton<bool>(
+            tooltip: 'Mode permainan',
+            icon: Icon(_playVsBot ? Icons.smart_toy_rounded : Icons.groups_rounded),
+            color: const Color(0xFF1C1B16),
+            onSelected: _setGameMode,
+            itemBuilder: (context) => [
+              CheckedPopupMenuItem(
+                value: false,
+                checked: !_playVsBot,
+                child: const Text('Main dengan teman', style: TextStyle(color: Colors.white)),
+              ),
+              CheckedPopupMenuItem(
+                value: true,
+                checked: _playVsBot,
+                child: const Text('Lawan bot', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
           IconButton(tooltip: 'Ulangi pertandingan', onPressed: _reset, icon: const Icon(Icons.restart_alt_rounded)),
         ],
       ),
       body: Stack(
         children: [
           ModelViewer(
+            key: ValueKey('chess-scene-$_sceneRevision'),
             src: 'assets/models/chess-interactive.glb',
             ar: true,
             autoPlay: false,
@@ -99,26 +168,10 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
             child: _StatusPanel(
               whiteTurn: _whiteTurn,
               moveCount: _history.length,
-              canUndo: _history.isNotEmpty,
+              canUndo: _history.isNotEmpty && !_isNetworkGame,
               onUndo: _undo,
-              status: _modelReady ? status : _modelStatus,
-            ),
-          ),
-          Positioned(
-            top: 92,
-            left: 14,
-            right: 14,
-            child: IgnorePointer(
-              child: Text(
-                'Sentuh bidak 3D, lalu pilih petak bercahaya pada papan 3D.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: .76),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  shadows: const [Shadow(color: Colors.black, blurRadius: 4)],
-                ),
-              ),
+              status: status,
+              networkStatus: _networkStatus,
             ),
           ),
           if (_selected != null)
@@ -161,6 +214,8 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
 
   void _tapSquare(int index) {
     if (!_modelReady) return;
+    if (_botThinking || (_playVsBot && !_whiteTurn)) return;
+    if (_isNetworkGame && !_isLocalNetworkTurn) return;
     final piece = _board[index];
     if (_selected != null && _legalMovesFor(_selected!).contains(index)) {
       _move(_selected!, index);
@@ -171,7 +226,7 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
     _sync3dHighlights();
   }
 
-  Future<void> _move(int from, int to) async {
+  Future<void> _move(int from, int to, {bool byBot = false, bool fromNetwork = false, String? promotionOverride}) async {
     final piece = _board[from];
     final isCastle = piece[1] == 'k' && (to - from).abs() == 2;
     final rookFrom = isCastle ? (to > from ? from + 3 : from - 4) : null;
@@ -180,8 +235,14 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
     final captureSquare = isEnPassant ? to + (piece[0] == 'w' ? 8 : -8) : to;
     var promotedPiece = piece;
     if (piece[1] == 'p' && (to ~/ 8 == 0 || to ~/ 8 == 7)) {
-      promotedPiece = await _choosePromotion(piece[0]) ?? '${piece[0]}q';
-      if (!mounted) return;
+      if (promotionOverride != null) {
+        promotedPiece = promotionOverride;
+      } else if (byBot || fromNetwork) {
+        promotedPiece = '${piece[0]}q';
+      } else {
+        promotedPiece = await _choosePromotion(piece[0]) ?? '${piece[0]}q';
+        if (!mounted) return;
+      }
     }
     final move = _Move(
       from: from,
@@ -212,9 +273,27 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
     });
     _runJs('window.moveChessPiece?.($from, $to, $captureSquare, ${rookFrom ?? 'null'}, ${rookTo ?? 'null'});');
     _sync3dHighlights();
+    if (_isNetworkGame && !fromNetwork) {
+      _sendLan({
+        'type': 'move',
+        'from': from,
+        'to': to,
+        'promotion': promotedPiece == piece ? null : promotedPiece,
+      });
+    }
+    if (!byBot && !fromNetwork && !_isNetworkGame) _scheduleBotMove();
   }
 
   void _undo() {
+    if (_history.isEmpty || _botThinking) return;
+    final undoCount = _playVsBot && _whiteTurn && _history.length >= 2 ? 2 : 1;
+    for (var index = 0; index < undoCount; index++) {
+      _undoOne();
+    }
+    _sync3dHighlights();
+  }
+
+  void _undoOne() {
     if (_history.isEmpty) return;
     final move = _history.removeLast();
     setState(() {
@@ -233,22 +312,487 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
       _whiteTurn = !_whiteTurn;
     });
     _runJs('window.undoChessMove?.();');
-    _sync3dHighlights();
   }
 
-  void _reset() {
+  void _reset({bool sendNetwork = true}) {
     setState(() {
+      _gameGeneration++;
+      _sceneRevision++;
+      _webViewController = null;
       _board.setAll(0, _initial);
       _history.clear();
       _selected = null;
       _whiteTurn = true;
+      _botThinking = false;
+      _modelReady = false;
+      _modelStatus = 'Menyiapkan ulang papan 3D...';
       _enPassantTarget = null;
       _castlingRights
         ..clear()
         ..addAll({'K', 'Q', 'k', 'q'});
     });
-    _runJs('window.resetChessBoard?.();');
+    if (sendNetwork && _isNetworkGame) {
+      _sendLan({'type': 'reset'});
+    }
+  }
+
+  void _setGameMode(bool playVsBot) {
+    if (_playVsBot == playVsBot) return;
+    _disconnectLan(updateState: false);
+    setState(() {
+      _playVsBot = playVsBot;
+      _gameGeneration++;
+      _sceneRevision++;
+      _webViewController = null;
+      _board.setAll(0, _initial);
+      _history.clear();
+      _selected = null;
+      _whiteTurn = true;
+      _botThinking = false;
+      _modelReady = false;
+      _modelStatus = playVsBot
+          ? 'Menyiapkan mode lawan bot...'
+          : 'Menyiapkan mode teman...';
+      _enPassantTarget = null;
+      _castlingRights
+        ..clear()
+        ..addAll({'K', 'Q', 'k', 'q'});
+    });
+  }
+
+  Future<void> _showLanDialog() async {
+    final action = await showDialog<_LanDialogAction>(
+      context: context,
+      builder: (context) => _LanDialog(
+        isNetworkGame: _isNetworkGame,
+        networkStatus: _networkStatus,
+      ),
+    );
+    if (!mounted || action == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (action.type == _LanDialogActionType.host) {
+        _startLanHost();
+      } else if (action.type == _LanDialogActionType.join && action.ip.isNotEmpty) {
+        _joinLanGame(action.ip);
+      } else if (action.type == _LanDialogActionType.disconnect) {
+        _disconnectLan();
+      }
+    });
+  }
+
+  Future<void> _startLanHost() async {
+    try {
+      await _disconnectLan(updateState: false);
+      final server = await ServerSocket.bind(InternetAddress.anyIPv4, _lanPort, shared: true);
+      final ip = await _findLocalIp();
+      _lanServer = server;
+      _lanServerSubscription = server.listen((socket) {
+        _attachLanSocket(socket, _NetworkRole.host);
+        _sendLan({'type': 'hello', 'role': 'host'});
+      });
+      setState(() {
+        _playVsBot = false;
+        _networkRole = _NetworkRole.host;
+        _networkStatus = 'Host aktif: ${ip ?? 'cek IP Wi-Fi'}:$_lanPort | Menunggu teman...';
+      });
+      _reset(sendNetwork: false);
+    } catch (error) {
+      setState(() => _networkStatus = 'Gagal host Wi-Fi: $error');
+    }
+  }
+
+  Future<void> _joinLanGame(String ip) async {
+    try {
+      await _disconnectLan(updateState: false);
+      final socket = await Socket.connect(ip, _lanPort, timeout: const Duration(seconds: 5));
+      _attachLanSocket(socket, _NetworkRole.guest);
+      _sendLan({'type': 'hello', 'role': 'guest'});
+      setState(() {
+        _playVsBot = false;
+        _networkRole = _NetworkRole.guest;
+        _networkStatus = 'Terhubung ke host $ip:$_lanPort | Kamu bermain hitam';
+      });
+      _reset(sendNetwork: false);
+    } catch (error) {
+      setState(() => _networkStatus = 'Gagal join Wi-Fi: $error');
+    }
+  }
+
+  void _attachLanSocket(Socket socket, _NetworkRole role) {
+    _lanSocketSubscription?.cancel();
+    _lanSocket?.destroy();
+    _lanSocket = socket;
+    _lanSocketSubscription = socket
+        .cast<List<int>>()
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen(
+          _handleLanMessage,
+          onDone: _handleLanClosed,
+          onError: (_) => _handleLanClosed(),
+        );
+    if (mounted) {
+      setState(() {
+        _networkRole = role;
+        _networkStatus = role == _NetworkRole.host
+            ? 'Teman terhubung | Kamu bermain putih'
+            : _networkStatus;
+      });
+    }
+  }
+
+  Future<String?> _findLocalIp() async {
+    final interfaces = await NetworkInterface.list(
+      type: InternetAddressType.IPv4,
+      includeLoopback: false,
+    );
+    for (final interface in interfaces) {
+      for (final address in interface.addresses) {
+        if (address.address.startsWith('192.168.') ||
+            address.address.startsWith('10.') ||
+            address.address.startsWith('172.')) {
+          return address.address;
+        }
+      }
+    }
+    final addresses = interfaces.expand((interface) => interface.addresses).map((address) => address.address);
+    return addresses.isEmpty ? null : addresses.first;
+  }
+
+  void _sendLan(Map<String, Object?> payload) {
+    final socket = _lanSocket;
+    if (socket == null) return;
+    socket.write('${jsonEncode(payload)}\n');
+  }
+
+  void _handleLanMessage(String line) {
+    try {
+      final data = jsonDecode(line);
+      if (data is! Map) return;
+      final type = data['type'];
+      if (type == 'hello') {
+        setState(() {
+          _networkStatus = _networkRole == _NetworkRole.host
+              ? 'Teman terhubung | Kamu bermain putih'
+              : 'Terhubung ke host | Kamu bermain hitam';
+        });
+      } else if (type == 'move') {
+        final from = data['from'];
+        final to = data['to'];
+        final promotion = data['promotion'];
+        if (from is int && to is int) {
+          _move(from, to, fromNetwork: true, promotionOverride: promotion is String ? promotion : null);
+        }
+      } else if (type == 'reset') {
+        _reset(sendNetwork: false);
+      }
+    } catch (error) {
+      debugPrint('[AR Chess LAN] Pesan tidak valid: $line | $error');
+    }
+  }
+
+  void _handleLanClosed() {
+    if (_closingLan || _disposed) return;
+    _disconnectLan();
+  }
+
+  Future<void> _disconnectLan({bool updateState = true}) async {
+    if (_closingLan) return;
+    _closingLan = true;
+    final socketSubscription = _lanSocketSubscription;
+    final serverSubscription = _lanServerSubscription;
+    final socket = _lanSocket;
+    final server = _lanServer;
+    _lanSocket = null;
+    _lanServer = null;
+    _lanSocketSubscription = null;
+    _lanServerSubscription = null;
+    await socketSubscription?.cancel();
+    await serverSubscription?.cancel();
+    socket?.destroy();
+    await server?.close();
+    _closingLan = false;
+    if (updateState && mounted && !_disposed) {
+      setState(() {
+        _networkRole = _NetworkRole.local;
+        _networkStatus = 'Offline';
+      });
+    }
+  }
+
+  void _scheduleBotMove() {
+    if (!_playVsBot || !_modelReady || _whiteTurn || _botThinking) return;
+    if (_gameStatus() == 'Skakmat' || _gameStatus().startsWith('Remis')) return;
+    final generation = _gameGeneration;
+    setState(() {
+      _selected = null;
+      _botThinking = true;
+    });
     _sync3dHighlights();
+    Future<void>.delayed(const Duration(milliseconds: 650), () async {
+      if (!mounted || generation != _gameGeneration || !_playVsBot || _whiteTurn) {
+        if (mounted) setState(() => _botThinking = false);
+        return;
+      }
+      final move = _chooseBotMove('b');
+      if (move != null && mounted && generation == _gameGeneration) {
+        await _move(move.from, move.to, byBot: true);
+      }
+      if (mounted) {
+        setState(() => _botThinking = false);
+        _sync3dHighlights();
+      }
+    });
+  }
+
+  _BotMove? _chooseBotMove(String color) {
+    final position = _BotPosition(List<String>.of(_board), _whiteTurn, _enPassantTarget, Set.of(_castlingRights));
+    final moves = _generateBotMoves(position, color);
+    if (moves.isEmpty) return null;
+    for (final move in moves) {
+      final next = _applyBotPosition(position, move);
+      move.score = _searchBotPosition(next, 2, -1000000, 1000000);
+    }
+    moves.sort((a, b) => b.score.compareTo(a.score));
+    final bestScore = moves.first.score;
+    final bestMoves = moves.where((move) => move.score == bestScore).toList();
+    return bestMoves[_random.nextInt(bestMoves.length)];
+  }
+
+  int _searchBotPosition(_BotPosition position, int depth, int alpha, int beta) {
+    final color = position.whiteTurn ? 'w' : 'b';
+    final moves = _generateBotMoves(position, color);
+    if (moves.isEmpty) {
+      final checked = _isKingAttackedIn(color, position);
+      if (!checked) return 0;
+      return color == 'b' ? -900000 - depth : 900000 + depth;
+    }
+    if (depth == 0) return _evaluateBotPosition(position);
+    moves.sort((a, b) => _moveOrderScore(position, b).compareTo(_moveOrderScore(position, a)));
+    if (color == 'b') {
+      var best = -1000000;
+      for (final move in moves) {
+        best = max(best, _searchBotPosition(_applyBotPosition(position, move), depth - 1, alpha, beta));
+        alpha = max(alpha, best);
+        if (alpha >= beta) break;
+      }
+      return best;
+    }
+    var best = 1000000;
+    for (final move in moves) {
+      best = min(best, _searchBotPosition(_applyBotPosition(position, move), depth - 1, alpha, beta));
+      beta = min(beta, best);
+      if (alpha >= beta) break;
+    }
+    return best;
+  }
+
+  List<_BotMove> _generateBotMoves(_BotPosition position, String color) {
+    final moves = <_BotMove>[];
+    for (var from = 0; from < 64; from++) {
+      if (!position.board[from].startsWith(color)) continue;
+      for (final to in _legalBotMovesFor(position, from)) {
+        moves.add(_BotMove(from, to, _moveOrderScore(position, _BotMove(from, to, 0))));
+      }
+    }
+    return moves;
+  }
+
+  List<int> _legalBotMovesFor(_BotPosition position, int from) {
+    final piece = position.board[from];
+    if (piece.isEmpty) return [];
+    return _pseudoMovesIn(position, from).where((to) {
+      final next = _applyBotPosition(position, _BotMove(from, to, 0));
+      return !_isKingAttackedIn(piece[0], next);
+    }).toList();
+  }
+
+  List<int> _pseudoMovesIn(_BotPosition position, int from, {bool attacksOnly = false}) {
+    final board = position.board;
+    final piece = board[from];
+    if (piece.isEmpty) return [];
+    final color = piece[0];
+    final type = piece[1];
+    final row = from ~/ 8;
+    final col = from % 8;
+    final moves = <int>[];
+    void add(int r, int c) {
+      if (r < 0 || r > 7 || c < 0 || c > 7) return;
+      final target = board[r * 8 + c];
+      if (target.isEmpty || target[0] != color) moves.add(r * 8 + c);
+    }
+    void slide(int dr, int dc) {
+      var r = row + dr;
+      var c = col + dc;
+      while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+        final target = board[r * 8 + c];
+        if (target.isEmpty) {
+          moves.add(r * 8 + c);
+        } else {
+          if (target[0] != color) moves.add(r * 8 + c);
+          break;
+        }
+        r += dr;
+        c += dc;
+      }
+    }
+    if (type == 'p') {
+      final direction = color == 'w' ? -1 : 1;
+      final startRow = color == 'w' ? 6 : 1;
+      final oneRow = row + direction;
+      if (!attacksOnly && oneRow >= 0 && oneRow < 8 && board[oneRow * 8 + col].isEmpty) {
+        moves.add(oneRow * 8 + col);
+        final twoRow = row + direction * 2;
+        if (row == startRow && board[twoRow * 8 + col].isEmpty) moves.add(twoRow * 8 + col);
+      }
+      for (final dc in [-1, 1]) {
+        final r = row + direction;
+        final c = col + dc;
+        if (r >= 0 && r < 8 && c >= 0 && c < 8) {
+          final square = r * 8 + c;
+          final target = board[square];
+          if (attacksOnly || (target.isNotEmpty && target[0] != color) || square == position.enPassantTarget) {
+            moves.add(square);
+          }
+        }
+      }
+    } else if (type == 'n') {
+      for (final delta in const [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) {
+        add(row + delta[0], col + delta[1]);
+      }
+    } else if (type == 'k') {
+      for (final dr in [-1, 0, 1]) {
+        for (final dc in [-1, 0, 1]) {
+          if (dr != 0 || dc != 0) add(row + dr, col + dc);
+        }
+      }
+      if (!attacksOnly && !_isKingAttackedIn(color, position)) {
+        final home = color == 'w' ? 60 : 4;
+        if (from == home) {
+          final kingSide = color == 'w' ? 'K' : 'k';
+          final queenSide = color == 'w' ? 'Q' : 'q';
+          if (position.castlingRights.contains(kingSide) &&
+              board[home + 1].isEmpty && board[home + 2].isEmpty &&
+              !_isSquareAttackedIn(home + 1, color, position) && !_isSquareAttackedIn(home + 2, color, position)) {
+            moves.add(home + 2);
+          }
+          if (position.castlingRights.contains(queenSide) &&
+              board[home - 1].isEmpty && board[home - 2].isEmpty && board[home - 3].isEmpty &&
+              !_isSquareAttackedIn(home - 1, color, position) && !_isSquareAttackedIn(home - 2, color, position)) {
+            moves.add(home - 2);
+          }
+        }
+      }
+    } else {
+      if (type == 'r' || type == 'q') {
+        for (final d in const [[-1,0],[1,0],[0,-1],[0,1]]) {
+          slide(d[0], d[1]);
+        }
+      }
+      if (type == 'b' || type == 'q') {
+        for (final d in const [[-1,-1],[-1,1],[1,-1],[1,1]]) {
+          slide(d[0], d[1]);
+        }
+      }
+    }
+    return moves;
+  }
+
+  _BotPosition _applyBotPosition(_BotPosition position, _BotMove move) {
+    final board = List<String>.of(position.board);
+    final castlingRights = Set<String>.of(position.castlingRights);
+    final piece = board[move.from];
+    final isCastle = piece[1] == 'k' && (move.to - move.from).abs() == 2;
+    final rookFrom = isCastle ? (move.to > move.from ? move.from + 3 : move.from - 4) : null;
+    final rookTo = isCastle ? (move.to > move.from ? move.from + 1 : move.from - 1) : null;
+    final isEnPassant = piece[1] == 'p' && move.to == position.enPassantTarget && board[move.to].isEmpty;
+    final captureSquare = isEnPassant ? move.to + (piece[0] == 'w' ? 8 : -8) : move.to;
+    board[move.to] = piece[1] == 'p' && (move.to ~/ 8 == 0 || move.to ~/ 8 == 7) ? '${piece[0]}q' : piece;
+    board[move.from] = '';
+    if (captureSquare != move.to) board[captureSquare] = '';
+    if (rookFrom != null && rookTo != null) {
+      board[rookTo] = board[rookFrom];
+      board[rookFrom] = '';
+    }
+    if (piece == 'wk') castlingRights.removeAll({'K', 'Q'});
+    if (piece == 'bk') castlingRights.removeAll({'k', 'q'});
+    const rookRights = {56: 'Q', 63: 'K', 0: 'q', 7: 'k'};
+    final moved = rookRights[move.from];
+    final captured = rookRights[captureSquare];
+    if (moved != null) castlingRights.remove(moved);
+    if (captured != null) castlingRights.remove(captured);
+    final enPassant = piece[1] == 'p' && (move.to - move.from).abs() == 16
+        ? (move.from + move.to) ~/ 2
+        : null;
+    return _BotPosition(board, !position.whiteTurn, enPassant, castlingRights);
+  }
+
+  bool _isKingAttackedIn(String color, _BotPosition position) {
+    final king = position.board.indexOf('${color}k');
+    return king == -1 || _isSquareAttackedIn(king, color, position);
+  }
+
+  bool _isSquareAttackedIn(int square, String defendingColor, _BotPosition position) {
+    for (var index = 0; index < 64; index++) {
+      final piece = position.board[index];
+      if (piece.isNotEmpty && piece[0] != defendingColor) {
+        if (_pseudoMovesIn(position, index, attacksOnly: true).contains(square)) return true;
+      }
+    }
+    return false;
+  }
+
+  int _evaluateBotPosition(_BotPosition position) {
+    var score = 0;
+    for (var square = 0; square < 64; square++) {
+      final piece = position.board[square];
+      if (piece.isEmpty) continue;
+      final value = _pieceValue(piece) + _pieceSquareScore(piece, square);
+      score += piece[0] == 'b' ? value : -value;
+    }
+    if (_isKingAttackedIn('w', position)) score += 55;
+    if (_isKingAttackedIn('b', position)) score -= 55;
+    return score;
+  }
+
+  int _moveOrderScore(_BotPosition position, _BotMove move) {
+    final piece = position.board[move.from];
+    final isEnPassant = piece[1] == 'p' && move.to == position.enPassantTarget && position.board[move.to].isEmpty;
+    final captureSquare = isEnPassant ? move.to + (piece[0] == 'w' ? 8 : -8) : move.to;
+    final captured = position.board[captureSquare];
+    var score = _pieceValue(captured) * 12 - _pieceValue(piece);
+    if (piece[1] == 'p' && (move.to ~/ 8 == 0 || move.to ~/ 8 == 7)) score += 850;
+    if (piece[1] == 'k' && (move.to - move.from).abs() == 2) score += 80;
+    return score;
+  }
+
+  int _pieceValue(String piece) {
+    if (piece.isEmpty) return 0;
+    return switch (piece[1]) {
+      'p' => 100,
+      'n' => 320,
+      'b' => 330,
+      'r' => 500,
+      'q' => 900,
+      'k' => 20000,
+      _ => 0,
+    };
+  }
+
+  int _pieceSquareScore(String piece, int square) {
+    if (piece.isEmpty) return 0;
+    final row = square ~/ 8;
+    final col = square % 8;
+    final center = 14 - ((row - 3).abs() + (row - 4).abs() + (col - 3).abs() + (col - 4).abs());
+    final advance = piece[0] == 'w' ? 6 - row : row - 1;
+    return switch (piece[1]) {
+      'p' => advance * 8 + center,
+      'n' || 'b' => center * 6,
+      'q' => center * 2,
+      'k' => _history.length < 18 ? -center * 3 : center * 2,
+      _ => center,
+    };
   }
 
   void _runJs(String command) {
@@ -351,10 +895,14 @@ class _ChessViewerScreenState extends State<ChessViewerScreen> {
       }
     } else {
       if (type == 'r' || type == 'q') {
-        for (final d in const [[-1,0],[1,0],[0,-1],[0,1]]) slide(d[0], d[1]);
+        for (final d in const [[-1,0],[1,0],[0,-1],[0,1]]) {
+          slide(d[0], d[1]);
+        }
       }
       if (type == 'b' || type == 'q') {
-        for (final d in const [[-1,-1],[-1,1],[1,-1],[1,1]]) slide(d[0], d[1]);
+        for (final d in const [[-1,-1],[-1,1],[1,-1],[1,1]]) {
+          slide(d[0], d[1]);
+        }
       }
     }
     return moves;
@@ -450,13 +998,36 @@ class _Move {
   });
 }
 
+class _BotMove {
+  final int from;
+  final int to;
+  int score;
+  _BotMove(this.from, this.to, this.score);
+}
+
+class _BotPosition {
+  final List<String> board;
+  final bool whiteTurn;
+  final int? enPassantTarget;
+  final Set<String> castlingRights;
+  const _BotPosition(this.board, this.whiteTurn, this.enPassantTarget, this.castlingRights);
+}
+
 class _StatusPanel extends StatelessWidget {
   final bool whiteTurn;
   final int moveCount;
   final bool canUndo;
   final VoidCallback onUndo;
   final String status;
-  const _StatusPanel({required this.whiteTurn, required this.moveCount, required this.canUndo, required this.onUndo, required this.status});
+  final String networkStatus;
+  const _StatusPanel({
+    required this.whiteTurn,
+    required this.moveCount,
+    required this.canUndo,
+    required this.onUndo,
+    required this.status,
+    required this.networkStatus,
+  });
 
   @override
   Widget build(BuildContext context) => Container(
@@ -472,7 +1043,7 @@ class _StatusPanel extends StatelessWidget {
         const SizedBox(width: 9),
         Expanded(
           child: Text(
-            'Giliran ${whiteTurn ? 'Putih' : 'Hitam'} | Langkah ${moveCount + 1}\n$status',
+            'Giliran ${whiteTurn ? 'Putih' : 'Hitam'} | Langkah ${moveCount + 1}\n$status\nWi-Fi: $networkStatus',
             maxLines: 5,
             overflow: TextOverflow.visible,
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
@@ -481,6 +1052,95 @@ class _StatusPanel extends StatelessWidget {
         IconButton(onPressed: canUndo ? onUndo : null, tooltip: 'Batalkan langkah', icon: const Icon(Icons.undo_rounded), color: Colors.amberAccent),
       ],
     ),
+  );
+}
+
+enum _LanDialogActionType { host, join, disconnect }
+
+class _LanDialogAction {
+  final _LanDialogActionType type;
+  final String ip;
+  const _LanDialogAction(this.type, [this.ip = '']);
+}
+
+class _LanDialog extends StatefulWidget {
+  final bool isNetworkGame;
+  final String networkStatus;
+  const _LanDialog({required this.isNetworkGame, required this.networkStatus});
+
+  @override
+  State<_LanDialog> createState() => _LanDialogState();
+}
+
+class _LanDialogState extends State<_LanDialog> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    backgroundColor: const Color(0xFF171711),
+    title: const Text('Multiplayer Wi-Fi', style: TextStyle(color: Colors.white)),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          widget.isNetworkGame
+              ? widget.networkStatus
+              : 'Satu HP pilih Host, HP lain pilih Join dan masukkan IP host. Keduanya harus di Wi-Fi yang sama.',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        if (!widget.isNetworkGame) ...[
+          const SizedBox(height: 14),
+          TextField(
+            controller: _controller,
+            keyboardType: TextInputType.text,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              labelText: 'IP host, contoh 192.168.1.12',
+              labelStyle: TextStyle(color: Colors.white54),
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.amberAccent)),
+            ),
+          ),
+        ],
+      ],
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Tutup'),
+      ),
+      if (widget.isNetworkGame)
+        TextButton(
+          onPressed: () => Navigator.pop(
+            context,
+            const _LanDialogAction(_LanDialogActionType.disconnect),
+          ),
+          child: const Text('Putuskan'),
+        )
+      else ...[
+        TextButton(
+          onPressed: () => Navigator.pop(
+            context,
+            const _LanDialogAction(_LanDialogActionType.host),
+          ),
+          child: const Text('Host'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(
+            context,
+            _LanDialogAction(_LanDialogActionType.join, _controller.text.trim()),
+          ),
+          child: const Text('Join'),
+        ),
+      ],
+    ],
   );
 }
 
@@ -506,6 +1166,9 @@ const _chessJs = r'''
   const clipState = {
     squares: [...clipInitialNames],
     origins: new Map(),
+    startPositions: new Map(),
+    objectCache: new Map(),
+    moveFrames: new Map(),
     history: [],
     actions: new Map(),
   };
@@ -599,10 +1262,99 @@ const _chessJs = r'''
     };
     requestAnimationFrame(tick);
   };
-  const playAction = (name, clipName, actionType) => {
+  const getScene = () => {
     const symbols = Object.getOwnPropertySymbols(viewer);
     const sceneSymbol = symbols.find((symbol) => symbol.description === 'scene');
-    const scene = sceneSymbol ? viewer[sceneSymbol] : null;
+    return sceneSymbol ? viewer[sceneSymbol] : null;
+  };
+  const findObjectByName = (name) => {
+    if (!name) return null;
+    const cached = clipState.objectCache.get(name);
+    if (cached) return cached;
+    const scene = getScene();
+    const roots = [
+      scene,
+      scene?.model,
+      scene?.model?.scene,
+      scene?.modelContainer,
+      scene?._model,
+      scene?._currentGLTF?.scene,
+      scene?.currentGLTF?.scene,
+    ].filter(Boolean);
+    for (const root of roots) {
+      const direct = root.getObjectByName?.(name);
+      if (direct) {
+        clipState.objectCache.set(name, direct);
+        return direct;
+      }
+      let found = null;
+      root.traverse?.((object) => {
+        if (!found && object.name === name) found = object;
+      });
+      if (found) {
+        clipState.objectCache.set(name, found);
+        return found;
+      }
+    }
+    return null;
+  };
+  const captureStartPositions = () => {
+    clipState.startPositions.clear();
+    clipState.objectCache.clear();
+    clipInitialNames.forEach((name) => {
+      const object = findObjectByName(name);
+      if (object?.position) clipState.startPositions.set(name, object.position.clone());
+    });
+    console.log('[AR Chess] Posisi awal bidak tersimpan:', clipState.startPositions.size);
+  };
+  const markDirty = (duration = 520) => {
+    const scene = getScene();
+    const started = performance.now();
+    const tick = (now) => {
+      if (scene) scene.isDirty = true;
+      viewer.requestUpdate?.();
+      if (now - started < duration) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  };
+  const animatePieceToSquare = (name, targetSquare) => {
+    const object = findObjectByName(name);
+    const startHome = clipState.startPositions.get(name);
+    const origin = clipState.origins.get(name);
+    if (!object?.position || !startHome || origin === undefined) return false;
+    const rowDelta = Math.floor(targetSquare / 8) - Math.floor(origin / 8);
+    const colDelta = (targetSquare % 8) - (origin % 8);
+    const from = object.position.clone();
+    const target = startHome.clone();
+    target.x += colDelta * 3600;
+    target.z -= rowDelta * 3600;
+    cancelAnimationFrame(clipState.moveFrames.get(name));
+    const started = performance.now();
+    const duration = 420;
+    const lift = Math.max(320, Math.min(780, from.distanceTo(target) * 0.05));
+    const step = (now) => {
+      const raw = Math.min(1, (now - started) / duration);
+      const t = raw < 0.5 ? 2 * raw * raw : 1 - Math.pow(-2 * raw + 2, 2) / 2;
+      object.position.lerpVectors(from, target, t);
+      object.position.y = from.y + (target.y - from.y) * t + Math.sin(Math.PI * t) * lift;
+      const scene = getScene();
+      if (scene) scene.isDirty = true;
+      viewer.requestUpdate?.();
+      if (raw < 1) {
+        clipState.moveFrames.set(name, requestAnimationFrame(step));
+      } else {
+        object.position.copy(target);
+        clipState.moveFrames.delete(name);
+        markDirty(120);
+      }
+    };
+    clipState.actions.get(`move|${name}`)?.stop?.();
+    clipState.moveFrames.set(name, requestAnimationFrame(step));
+    console.log('[AR Chess] Animasi posisi langsung:', name, 'ke petak', targetSquare);
+    return true;
+  };
+  const playAction = (name, clipName, actionType) => {
+    const scene = getScene();
     const clip =
       scene?.animationsByName?.get?.(clipName) ||
       scene?.animationsByName?.[clipName];
@@ -622,6 +1374,7 @@ const _chessJs = r'''
   };
   const playMoveClip = (name, targetSquare) => {
     if (!name) return;
+    if (animatePieceToSquare(name, targetSquare)) return;
     const origin = clipState.origins.get(name);
     const rowDelta = Math.floor(targetSquare / 8) - Math.floor(origin / 8);
     const colDelta = (targetSquare % 8) - (origin % 8);
@@ -680,8 +1433,16 @@ const _chessJs = r'''
   };
   const markClipReady = () => {
     addBoardHotspots();
-    console.log('[AR Chess] Clip GLB siap digunakan.');
-    if (window.ChessReadyChannel) window.ChessReadyChannel.postMessage('ready');
+    const finishReady = (attempt = 0) => {
+      captureStartPositions();
+      if (clipState.startPositions.size < 32 && attempt < 10) {
+        setTimeout(() => finishReady(attempt + 1), 80);
+        return;
+      }
+      console.log('[AR Chess] Clip GLB siap digunakan.');
+      if (window.ChessReadyChannel) window.ChessReadyChannel.postMessage('ready');
+    };
+    requestAnimationFrame(() => finishReady());
   };
   viewer.addEventListener('load', markClipReady, { once: true });
   if (viewer.loaded) markClipReady();
