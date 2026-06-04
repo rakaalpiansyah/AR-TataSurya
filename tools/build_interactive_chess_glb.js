@@ -39,6 +39,12 @@ for (const { node } of pieceRoots) {
   delete node.matrix;
 }
 
+// The source chess.glb has the king and queen meshes sitting on each other's
+// home squares. Keep the Dart board standard (queen on d-file, king on e-file)
+// by fixing the physical 3D node positions before animation clips are built.
+swapNodeTranslations('Circle.029', 'Circle.035'); // black queen/king: d8 <-> e8
+swapNodeTranslations('Circle.008', 'Circle.007'); // white queen/king: d1 <-> e1
+
 json.animations = [];
 const chunks = [bin];
 for (const { node, index } of pieceRoots) {
@@ -126,6 +132,17 @@ function centerAccessor(document, buffer, meshIndex, center) {
     accessor.min[1] -= center[1];
     accessor.max[1] -= center[1];
   }
+}
+
+function swapNodeTranslations(firstName, secondName) {
+  const first = pieceRoots.find(({ node }) => node.name === firstName)?.node;
+  const second = pieceRoots.find(({ node }) => node.name === secondName)?.node;
+  if (!first || !second) {
+    throw new Error(`Cannot swap missing chess nodes: ${firstName}, ${secondName}`);
+  }
+  const translation = first.translation;
+  first.translation = second.translation;
+  second.translation = translation;
 }
 
 function writeGlb(document, binary, outputPath) {

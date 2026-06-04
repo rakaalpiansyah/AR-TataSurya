@@ -490,8 +490,8 @@ const _chessJs = r'''
   if (!viewer || window._chessReady) return;
   window._chessReady = true;
   const clipInitialNames = [
-    'Circle.036', 'Circle.034', 'Circle.028', 'Circle.029',
-    'Circle.035', 'Circle.027', 'Circle.030', 'Circle.026',
+    'Circle.036', 'Circle.034', 'Circle.028', 'Circle.035',
+    'Circle.029', 'Circle.027', 'Circle.030', 'Circle.026',
     'Circle.011', 'Circle.012', 'Circle.013', 'Circle.014',
     'Circle.015', 'Circle.016', 'Circle.017', 'Circle.018',
     null, null, null, null, null, null, null, null,
@@ -500,8 +500,8 @@ const _chessJs = r'''
     null, null, null, null, null, null, null, null,
     'Circle.025', 'Circle', 'Circle.019', 'Circle.020',
     'Circle.021', 'Circle.022', 'Circle.023', 'Circle.024',
-    'Circle.031', 'Circle.033', 'Circle.032', 'Circle.008',
-    'Circle.007', 'Circle.003', 'Circle.009', 'Circle.001',
+    'Circle.031', 'Circle.033', 'Circle.032', 'Circle.007',
+    'Circle.008', 'Circle.003', 'Circle.009', 'Circle.001',
   ];
   const clipState = {
     squares: [...clipInitialNames],
@@ -693,8 +693,8 @@ const _chessJs = r'''
     if (window.ChessReadyChannel) window.ChessReadyChannel.postMessage(text);
   };
   const initialNodeNames = [
-    'Circle.036', 'Circle.034', 'Circle.028', 'Circle.029',
-    'Circle.035', 'Circle.027', 'Circle.030', 'Circle.026',
+    'Circle.036', 'Circle.034', 'Circle.028', 'Circle.035',
+    'Circle.029', 'Circle.027', 'Circle.030', 'Circle.026',
     'Circle.011', 'Circle.012', 'Circle.013', 'Circle.014',
     'Circle.015', 'Circle.016', 'Circle.017', 'Circle.018',
     null, null, null, null, null, null, null, null,
@@ -703,12 +703,12 @@ const _chessJs = r'''
     null, null, null, null, null, null, null, null,
     'Circle.025', 'Circle', 'Circle.019', 'Circle.020',
     'Circle.021', 'Circle.022', 'Circle.023', 'Circle.024',
-    'Circle.031', 'Circle.033', 'Circle.032', 'Circle.008',
-    'Circle.007', 'Circle.003', 'Circle.009', 'Circle.001',
+    'Circle.031', 'Circle.033', 'Circle.032', 'Circle.007',
+    'Circle.008', 'Circle.003', 'Circle.009', 'Circle.001',
   ];
   const initialMeshNames = [
-    'Circle.036_black_0', 'Circle.034_black_0', 'Circle.028_black_0', 'Circle.029_black_0',
-    'Circle.035_black_0', 'Circle.027_black_0', 'Circle.030_black_0', 'Circle.026_black_0',
+    'Circle.036_black_0', 'Circle.034_black_0', 'Circle.028_black_0', 'Circle.035_black_0',
+    'Circle.029_black_0', 'Circle.027_black_0', 'Circle.030_black_0', 'Circle.026_black_0',
     'Circle.011_black_0', 'Circle.012_black_0', 'Circle.013_black_0', 'Circle.014_black_0',
     'Circle.015_black_0', 'Circle.016_black_0', 'Circle.017_black_0', 'Circle.018_black_0',
     null, null, null, null, null, null, null, null,
@@ -717,8 +717,8 @@ const _chessJs = r'''
     null, null, null, null, null, null, null, null,
     'Circle.025_white_0', 'Circle_white_0', 'Circle.019_white_0', 'Circle.020_white_0',
     'Circle.021_white_0', 'Circle.022_white_0', 'Circle.023_white_0', 'Circle.024_white_0',
-    'Circle.031_white_0', 'Circle.033_white_0', 'Circle.032_white_0', 'Circle.008_white_0',
-    'Circle.007_white_0', 'Circle.003_white_0', 'Circle.009_white_0', 'Circle.001_white_0',
+    'Circle.031_white_0', 'Circle.033_white_0', 'Circle.032_white_0', 'Circle.007_white_0',
+    'Circle.008_white_0', 'Circle.003_white_0', 'Circle.009_white_0', 'Circle.001_white_0',
   ];
   const internalScene = () => {
     const isScene = (candidate) => {
