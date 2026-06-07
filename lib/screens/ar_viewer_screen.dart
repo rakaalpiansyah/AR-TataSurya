@@ -27,6 +27,7 @@ class _ArViewerScreenState extends State<ArViewerScreen> {
         children: [
           ModelViewer(
             src: 'assets/models/solar-ar.glb',
+            backgroundColor: Colors.transparent,
             ar: true,
             autoPlay: true,
             autoRotate: false,
@@ -218,15 +219,17 @@ class _ArViewerScreenState extends State<ArViewerScreen> {
                   ),
                   const Spacer(),
                   _RoundIconButton(
-                    icon: Icons.view_in_ar_rounded,
-                    tooltip: 'Aktifkan mode AR',
+                    icon: Icons.help_outline_rounded,
+                    tooltip: 'Info mode AR',
                     onPressed: () {
-                      _webViewController?.runJavaScript("""
-                        (() => {
-                          const viewer = document.querySelector('model-viewer');
-                          if (viewer && viewer.activateAR) viewer.activateAR();
-                        })();
-                      """);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Gunakan tombol AR putih di kanan bawah untuk membuka mode AR perangkat.',
+                          ),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
                     },
                   ),
                 ],
@@ -275,7 +278,7 @@ class _ArViewerScreenState extends State<ArViewerScreen> {
 
     if (_webViewController == null) return;
 
-    // Arahkan kamera ke planet — animasi tetap berjalan tanpa pause
+    // Arahkan kamera ke planet; animasi tetap berjalan tanpa pause.
     _webViewController!.runJavaScript("""
       (() => {
         const viewer = document.querySelector('model-viewer');
@@ -356,7 +359,7 @@ class _ArViewerScreenState extends State<ArViewerScreen> {
     );
   }
 
-  // Deteksi planet dari nama mesh/material/node di solar-professional.glb.
+  // Deteksi planet dari nama mesh/material/node di solar-ar.glb.
   int _getPlanetIndexFromName(String rawName) {
     final name = rawName.toLowerCase();
     // Nama mesh Bahasa Indonesia dari model profesional.

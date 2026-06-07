@@ -1,77 +1,63 @@
 # AR Tata Surya
 
-AR Tata Surya adalah aplikasi Flutter berbasis Augmented Reality untuk media pembelajaran sistem tata surya. Aplikasi ini menampilkan model 3D tata surya, kontrol pilihan planet, animasi orbit, dan informasi edukatif agar pengguna dapat memahami karakter objek langit secara visual dan interaktif.
-
-Project ini dibuat sebagai penerapan Augmented Reality pada aplikasi mobile dengan pendekatan visualisasi 3D. Fokus utamanya adalah membantu pengguna melihat representasi tata surya secara lebih nyata dibandingkan hanya melalui gambar 2D atau teks.
+AR Tata Surya adalah aplikasi Flutter untuk media pembelajaran astronomi interaktif. Aplikasi ini menampilkan model 3D tata surya, pilihan planet, informasi edukatif, animasi orbit, dan mode Augmented Reality bawaan perangkat melalui viewer 3D.
 
 ## Tema Project
 
 Tema yang digunakan adalah **edukasi tata surya berbasis Augmented Reality**.
 
-Tema ini dipilih karena tata surya merupakan materi yang sangat visual. Objek seperti Matahari, planet, Bulan, orbit, rotasi, dan jarak antarplanet lebih mudah dipahami apabila ditampilkan dalam bentuk model 3D interaktif. Dengan AR, pengguna dapat melihat model tersebut di ruang nyata sehingga pengalaman belajar menjadi lebih menarik, imersif, dan mudah dipresentasikan.
-
-Materi yang divisualisasikan meliputi:
-
-- Matahari sebagai pusat tata surya.
-- Planet-planet utama dalam tata surya.
-- Bulan sebagai satelit alami Bumi.
-- Orbit dan rotasi objek langit.
-- Informasi dasar seperti tipe objek, jarak, diameter, periode rotasi, dan deskripsi singkat.
+Tema ini dipilih karena tata surya merupakan materi yang sangat visual. Objek seperti Matahari, planet, Bulan, orbit, rotasi, dan karakter tiap planet lebih mudah dipahami apabila ditampilkan melalui model 3D interaktif dibanding hanya menggunakan teks atau gambar statis.
 
 ## Metode AR Yang Digunakan
 
-Metode AR yang digunakan pada project ini adalah **markerless Augmented Reality berbasis 3D model viewer**.
+Metode AR yang digunakan adalah **markerless Augmented Reality berbasis model viewer**.
 
-Markerless AR adalah metode Augmented Reality yang tidak membutuhkan marker khusus seperti QR code, gambar target, atau pola cetak tertentu. Objek 3D dapat ditampilkan langsung pada lingkungan nyata melalui kamera perangkat, selama perangkat dan browser/platform mendukung kemampuan AR.
+Markerless AR adalah metode AR yang tidak membutuhkan marker fisik seperti QR code, gambar target, atau pola cetak. Pada project ini, pengguna dapat melihat model 3D terlebih dahulu di aplikasi, lalu membuka mode AR perangkat melalui tombol AR putih bawaan dari `model_viewer_plus`.
 
-Pada project ini, implementasi dilakukan menggunakan package `model_viewer_plus` di Flutter. Package ini memanfaatkan komponen `<model-viewer>` untuk menampilkan model 3D berformat GLB dan menyediakan akses ke mode AR pada perangkat yang mendukung.
+Pendekatan ini dipilih karena lebih stabil untuk perangkat Android modern, tidak membutuhkan dependency native AR tambahan, dan tetap memungkinkan model tata surya ditampilkan di ruang nyata apabila perangkat mendukung AR.
 
-Model 3D utama yang digunakan adalah:
+Model utama yang digunakan:
 
 ```text
 assets/models/solar-ar.glb
 ```
 
-Model tersebut berisi representasi tata surya yang dapat dilihat, diputar, diperbesar, serta digunakan pada mode AR.
-
 ## Penjelasan Metode
 
-Alur metode AR pada aplikasi ini adalah sebagai berikut:
+Alur metode pada aplikasi:
 
-1. Aplikasi Flutter menampilkan antarmuka utama melalui `HomeScreen`.
+1. Aplikasi menampilkan halaman awal melalui `HomeScreen`.
 2. Pengguna menekan tombol **Mulai Eksplorasi AR**.
-3. Aplikasi membuka `ArViewerScreen` yang memuat komponen `ModelViewer`.
-4. `ModelViewer` membaca file GLB dari folder `assets/models/`.
-5. Model tata surya ditampilkan dalam bentuk 3D dengan kontrol kamera.
-6. Pengguna dapat memilih planet melalui menu bawah atau menyentuh objek 3D.
-7. Aplikasi menampilkan informasi edukatif sesuai objek yang dipilih.
-8. Jika perangkat mendukung, pengguna dapat menekan tombol AR untuk menempatkan model 3D ke lingkungan nyata.
+3. Aplikasi membuka `ArViewerScreen` yang menampilkan model 3D tata surya.
+4. Pengguna dapat memilih planet melalui menu bawah atau menyentuh objek pada model 3D.
+5. Aplikasi membaca nama mesh atau material objek yang disentuh.
+6. Data tersebut dicocokkan dengan daftar planet di `planet_data.dart`.
+7. Informasi planet ditampilkan melalui card edukatif di atas viewer.
+8. Pengguna dapat menekan tombol AR putih di kanan bawah viewer untuk membuka mode AR perangkat.
 
-Interaksi objek dilakukan dengan JavaScript yang dikirim ke komponen `model-viewer`. Ketika objek pada model disentuh, aplikasi mencoba membaca nama mesh atau material, lalu mencocokkannya dengan data planet yang tersedia di Flutter. Setelah planet dikenali, kamera diarahkan ke objek tersebut dan kartu informasi ditampilkan.
+Interaksi penjelasan planet berada pada layer aplikasi Flutter, bukan ditanam langsung di dalam file model 3D. Dengan cara ini, informasi planet lebih mudah diperbarui, tampilan UI tetap rapi, dan model GLB tetap fokus sebagai aset visual.
 
 ## Alasan Menggunakan Metode Ini
 
-Metode markerless AR berbasis model 3D dipilih karena beberapa alasan:
+Metode markerless berbasis model viewer digunakan karena:
 
-- **Tidak membutuhkan marker fisik.** Pengguna tidak perlu mencetak gambar target atau menyiapkan alat tambahan.
-- **Lebih praktis untuk demonstrasi.** Model dapat langsung dibuka dari aplikasi dan digunakan pada perangkat mobile.
-- **Cocok untuk visualisasi tata surya.** Tata surya lebih efektif ditampilkan sebagai objek 3D yang dapat diamati dari berbagai sudut.
-- **Interaktif.** Pengguna dapat memilih planet, menggerakkan kamera, memperbesar model, dan membaca informasi objek.
-- **Mendukung pembelajaran visual.** Pengguna dapat memahami konsep orbit, rotasi, dan perbandingan objek dengan lebih mudah.
-- **Integrasi Flutter lebih sederhana.** `model_viewer_plus` memungkinkan model GLB ditampilkan dan diaktifkan dalam mode AR tanpa membangun engine AR dari awal.
-
-Dengan metode ini, aplikasi tetap ringan, mudah dijalankan, dan tetap memenuhi konsep utama Augmented Reality yaitu menggabungkan objek virtual 3D dengan lingkungan nyata.
+- **Tidak membutuhkan marker fisik.** Pengguna dapat langsung membuka aplikasi tanpa mencetak marker.
+- **Lebih stabil untuk demo UAS.** Aplikasi tidak bergantung pada plugin native AR tambahan yang berisiko tidak kompatibel dengan perangkat tertentu.
+- **Mendukung eksplorasi 3D.** Model dapat diputar, diperbesar, dan dipilih sebelum masuk ke mode AR.
+- **Tetap menyediakan mode AR.** Tombol AR bawaan viewer dapat membuka pengalaman AR perangkat jika tersedia.
+- **Mudah dipahami pengguna.** Alur penggunaan sederhana: buka aplikasi, pilih planet, baca informasi, lalu aktifkan AR.
+- **Cocok untuk edukasi visual.** Orbit, rotasi, dan bentuk planet dapat diamati secara langsung melalui model 3D.
 
 ## Fitur Utama
 
-- Tampilan 3D tata surya berbasis file GLB.
-- Mode AR melalui `model_viewer_plus`.
+- Home screen modern dan rapi.
+- Model 3D tata surya berbasis file GLB.
 - Animasi rotasi dan orbit tata surya.
-- Navigasi planet horizontal yang mudah digunakan di perangkat mobile.
-- Interaksi sentuh pada objek 3D untuk menampilkan informasi planet.
-- Kartu informasi planet berisi tipe objek, jarak, diameter, periode rotasi, dan deskripsi.
-- Home screen modern dengan ringkasan fitur.
-- Tema gelap yang nyaman untuk visual model antariksa.
+- Menu planet horizontal yang ringkas.
+- Interaksi sentuh objek 3D untuk menampilkan informasi planet.
+- Card informasi berisi tipe objek, jarak, diameter, rotasi, dan deskripsi.
+- Mode AR markerless melalui tombol AR bawaan `model_viewer_plus`.
+- Tombol bantuan untuk menjelaskan fungsi mode AR.
 
 ## Teknologi
 
@@ -106,37 +92,25 @@ tools/
   build_professional_glb.js
 ```
 
-## Penjelasan File Penting
-
-- `lib/main.dart` mengatur entry point aplikasi dan tema global.
-- `lib/screens/home_screen.dart` menampilkan halaman awal aplikasi.
-- `lib/screens/ar_viewer_screen.dart` menampilkan model 3D, kontrol AR, pemilihan planet, dan logika interaksi objek.
-- `lib/widgets/planet_info_card.dart` menampilkan informasi detail planet.
-- `lib/data/planet_data.dart` menyimpan data edukatif setiap objek langit.
-- `assets/models/solar-ar.glb` adalah model utama yang digunakan pada AR viewer.
-
 ## Cara Menjalankan
-
-Pastikan Flutter SDK sudah terpasang, lalu jalankan:
 
 ```bash
 flutter pub get
 flutter run
 ```
 
-Untuk pengalaman AR terbaik, gunakan perangkat fisik Android yang mendukung ARCore atau perangkat iOS yang mendukung ARKit. Aplikasi juga dapat dijalankan di web untuk melihat model 3D, tetapi kemampuan AR bergantung pada browser dan perangkat.
+Gunakan perangkat fisik Android untuk mencoba tombol AR. Mode AR bergantung pada dukungan AR perangkat dan layanan Google Play Services for AR.
 
 ## Cara Menggunakan
 
 1. Buka aplikasi.
-2. Tekan tombol **Mulai Eksplorasi AR**.
-3. Pilih planet dari menu bawah atau sentuh langsung objek pada model 3D.
-4. Baca informasi planet pada kartu yang muncul.
-5. Tekan tombol ikon AR untuk membuka mode AR jika perangkat mendukung.
+2. Tekan **Mulai Eksplorasi AR**.
+3. Pilih planet dari menu bawah atau sentuh objek pada model 3D.
+4. Baca informasi planet pada card.
+5. Tekan tombol AR putih di kanan bawah viewer untuk membuka mode AR perangkat.
+6. Gunakan tombol bantuan di kanan atas jika ingin melihat keterangan fungsi mode AR.
 
 ## Materi Yang Ditampilkan
-
-Aplikasi memuat informasi edukatif untuk:
 
 - Matahari
 - Merkurius
@@ -149,20 +123,14 @@ Aplikasi memuat informasi edukatif untuk:
 - Uranus
 - Neptunus
 
-## Kelebihan Project
-
-- Antarmuka dibuat sederhana dan mudah digunakan.
-- Pengguna dapat belajar melalui visual 3D, bukan hanya teks.
-- Aplikasi mendukung eksplorasi model dari berbagai sudut.
-- Materi disusun ringkas sehingga cocok untuk pembelajaran interaktif.
-- Model dapat digunakan dalam mode AR pada perangkat yang mendukung.
-
 ## Batasan Project
 
-- Mode AR bergantung pada dukungan perangkat dan platform.
-- Skala planet dan jarak orbit pada model tidak sepenuhnya mengikuti skala astronomi asli, karena disesuaikan agar mudah dilihat dalam satu tampilan.
+- Mode AR hanya aktif jika perangkat mendukung AR.
+- Beberapa perangkat dapat membuka viewer 3D tetapi tidak membuka mode AR.
+- Card informasi Flutter tidak ikut tampil di layar AR bawaan perangkat karena mode AR ditangani oleh viewer/platform.
+- Skala planet dan jarak orbit disesuaikan agar semua objek mudah dilihat dalam satu model.
 - Interaksi klik objek bergantung pada nama mesh atau material di file GLB.
 
 ## Kesimpulan
 
-Project AR Tata Surya menerapkan metode markerless Augmented Reality untuk menampilkan model 3D tata surya secara interaktif. Metode ini dipilih karena praktis, tidak membutuhkan marker fisik, dan sesuai untuk materi pembelajaran visual. Dengan bantuan Flutter dan `model_viewer_plus`, aplikasi mampu menampilkan model 3D, menyediakan interaksi planet, serta menghadirkan pengalaman belajar yang lebih menarik melalui AR.
+Project AR Tata Surya menerapkan metode markerless AR berbasis model viewer untuk menghadirkan pembelajaran tata surya yang interaktif, stabil, dan mudah digunakan. Pendekatan ini cocok untuk kebutuhan Ujian Akhir Semester karena tetap menampilkan visual 3D yang menarik, informasi edukatif yang jelas, serta mode AR perangkat tanpa dependency native tambahan yang berisiko mengganggu kompatibilitas.
