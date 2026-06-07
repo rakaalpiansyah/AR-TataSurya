@@ -23,17 +23,10 @@ class _ArViewerScreenState extends State<ArViewerScreen> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text('Edukasi Tata Surya AR',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.black87,
-        elevation: 0,
-      ),
       body: Stack(
         children: [
-          // LAYER 1: Mesin AR 3D
           ModelViewer(
-            src: 'assets/models/solar-professional.glb',
+            src: 'assets/models/solar-ar.glb',
             ar: true,
             autoPlay: true,
             autoRotate: false,
@@ -213,13 +206,40 @@ class _ArViewerScreenState extends State<ArViewerScreen> {
             },
           ),
 
-          // LAYER 2: Info atas
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+              child: Row(
+                children: [
+                  _RoundIconButton(
+                    icon: Icons.arrow_back_rounded,
+                    tooltip: 'Kembali',
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  const Spacer(),
+                  _RoundIconButton(
+                    icon: Icons.view_in_ar_rounded,
+                    tooltip: 'Aktifkan mode AR',
+                    onPressed: () {
+                      _webViewController?.runJavaScript("""
+                        (() => {
+                          const viewer = document.querySelector('model-viewer');
+                          if (viewer && viewer.activateAR) viewer.activateAR();
+                        })();
+                      """);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           if (!isOverview)
             SafeArea(
               child: Align(
                 alignment: Alignment.topCenter,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 74, 12, 0),
+                  padding: const EdgeInsets.fromLTRB(12, 68, 12, 0),
                   child: PlanetInfoCard(
                     key: ValueKey(selectedPlanet.name),
                     planet: selectedPlanet,
@@ -231,12 +251,14 @@ class _ArViewerScreenState extends State<ArViewerScreen> {
               ),
             ),
 
-          // LAYER 3: Navigasi bawah
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 90),
-              child: _buildPlanetList(),
+              padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+              child: SafeArea(
+                top: false,
+                child: _buildPlanetList(),
+              ),
             ),
           ),
         ],
@@ -276,8 +298,16 @@ class _ArViewerScreenState extends State<ArViewerScreen> {
   }
 
   Widget _buildPlanetList() {
-    return SizedBox(
-      height: 50,
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xCC050A13),
+        border: Border(
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+        ),
+      ),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: planetList.length,
@@ -288,35 +318,36 @@ class _ArViewerScreenState extends State<ArViewerScreen> {
           return Padding(
             padding: EdgeInsets.only(
               left: index == 1 ? 16.0 : 0.0,
-              right: 12.0,
+              right: 10.0,
             ),
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: isSelected
-                    ? Colors.cyanAccent.withValues(alpha: 0.24)
-                    : Colors.white.withValues(alpha: 0.15),
+                    ? const Color(0xFF42D7FF)
+                    : Colors.white.withValues(alpha: 0.1),
                 foregroundColor: Colors.white,
                 elevation: 0,
                 side: BorderSide(
                   color: isSelected
-                      ? Colors.cyanAccent.withValues(alpha: 0.75)
-                      : Colors.white.withValues(alpha: 0.4),
-                  width: 1.2,
+                      ? const Color(0xFF9AECFF)
+                      : Colors.white.withValues(alpha: 0.18),
+                  width: 1,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 15),
               ),
               onPressed: () {
                 _focusPlanet(index);
               },
               child: Text(
                 planetList[index].name,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                    fontSize: 15),
+                style: TextStyle(
+                  color: isSelected ? const Color(0xFF03121C) : Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                ),
               ),
             ),
           );
@@ -355,5 +386,42 @@ class _ArViewerScreenState extends State<ArViewerScreen> {
     if (name.contains('moon')) return 5;
     if (name.contains('saturn')) return 8;
     return -1;
+  }
+}
+
+class _RoundIconButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  const _RoundIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: const Color(0x9907101D),
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            width: 46,
+            height: 46,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            ),
+            child: Icon(icon, color: Colors.white, size: 23),
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -1,66 +1,93 @@
-# AR-TataSurya
+# AR Tata Surya
 
-AR-TataSurya adalah aplikasi Flutter yang menampilkan pengalaman Augmented Reality (AR) untuk eksplorasi tata surya. Aplikasi ini menggabungkan model 3D planet, data edukatif, dan antarmuka interaktif untuk memberikan pengalaman belajar yang imersif pada perangkat mobile dan web.
+AR Tata Surya adalah aplikasi Flutter untuk media pembelajaran Augmented Reality bertema sistem tata surya. Aplikasi ini menampilkan model 3D tata surya, pilihan planet interaktif, dan informasi edukatif singkat agar pengguna dapat memahami orbit, rotasi, jarak, diameter, serta karakter setiap objek langit.
+
+Project ini dibuat sebagai tugas Ujian Akhir Semester mata kuliah Grafika Komputer / AR dengan fokus pada pengalaman belajar yang modern, rapi, dan mudah digunakan saat presentasi.
 
 ## Fitur Utama
 
-- Tampilan AR real-time yang menempatkan model planet di lingkungan pengguna.
-- Koleksi model 3D planet yang dioptimalkan untuk performa mobile.
-- Informasi edukatif untuk setiap planet (massa, jari‑jari, jarak dari Matahari, dan deskripsi singkat).
-- Kontrol interaktif untuk memilih planet, memperbesar, dan melihat detail.
-- Dukungan multi-platform: Android, iOS, web (tergantung paket dan plugin AR yang digunakan).
+- Tampilan 3D tata surya berbasis file GLB.
+- Mode AR melalui `model_viewer_plus` untuk melihat model di ruang nyata.
+- Navigasi planet horizontal yang mudah digunakan di perangkat mobile.
+- Interaksi sentuh pada objek 3D untuk menampilkan informasi planet.
+- Kartu informasi planet berisi tipe objek, jarak, diameter, periode rotasi, dan deskripsi.
+- Home screen modern dengan ringkasan fitur dan daftar objek yang dipelajari.
+- Tema gelap yang nyaman untuk presentasi dan visual model antariksa.
 
-## Tujuan Proyek
+## Teknologi
 
-Memberikan alat pembelajaran visual yang mudah diakses untuk siswa dan penggemar astronomi, sekaligus menjadi contoh implementasi AR dengan Flutter dan integrasi aset 3D.
+- Flutter
+- Dart
+- Material 3
+- `model_viewer_plus`
+- Asset model 3D GLB
 
-## Struktur Proyek (ringkas)
+## Struktur Project
 
-- `lib/` – Kode sumber Flutter, termasuk layar, widget, dan model data.
-- `assets/` – Aset statis seperti model 3D, tekstur, dan gambar.
-- `models/` – Model 3D atau file pendukung yang digunakan di AR viewer.
-- `android/`, `ios/`, `web/`, `windows/`, `linux/`, `macos/` – Konfigurasi platform spesifik.
+```text
+lib/
+  main.dart
+  data/
+    planet_data.dart
+  models/
+    planet.dart
+  screens/
+    home_screen.dart
+    ar_viewer_screen.dart
+  widgets/
+    planet_info_card.dart
+assets/
+  models/
+    solar-ar.glb
+    solar-professional.glb
+    solar-withname.glb
+tools/
+  build_ar_glb.js
+  build_professional_glb.js
+```
 
-## Prasyarat
+## Cara Menjalankan
 
-- Flutter SDK (sesuaikan versi dengan `pubspec.yaml`).
-- Untuk pengembangan AR di Android/iOS, pasang plugin AR yang sesuai (contoh: `ar_flutter_plugin` atau plugin ARCore/ARKit), serta emulator atau perangkat fisik yang mendukung AR.
-
-## Instalasi & Menjalankan
-
-1. Clone repositori ini.
-2. Pastikan Flutter terpasang dan path sudah dikonfigurasi.
-3. Ambil dependensi:
+Pastikan Flutter SDK sudah terpasang, lalu jalankan:
 
 ```bash
 flutter pub get
-```
-
-4. Jalankan aplikasi pada perangkat yang mendukung AR atau emulator:
-
-```bash
 flutter run
 ```
 
-Catatan: Untuk pengalaman AR penuh, gunakan perangkat fisik yang mendukung ARCore (Android) atau ARKit (iOS). Untuk web, beberapa fitur AR mungkin terbatas tergantung pada plugin yang digunakan.
+Untuk pengalaman AR terbaik, gunakan perangkat fisik Android yang mendukung ARCore atau perangkat iOS yang mendukung ARKit. Aplikasi juga dapat dijalankan di web untuk melihat model 3D, tetapi kemampuan AR bergantung pada browser dan perangkat.
 
-## Penggunaan Aset & Model
+## Cara Menggunakan
 
-- Letakkan model 3D dan tekstur yang diperlukan di folder `assets/` dan daftarkan di `pubspec.yaml`.
-- Pastikan model dioptimalkan (polycount rendah, tekstur terkompresi) agar kinerja tetap baik di perangkat mobile.
+1. Buka aplikasi.
+2. Tekan tombol **Mulai Eksplorasi AR**.
+3. Pilih planet dari menu bawah atau sentuh langsung objek pada model 3D.
+4. Baca informasi planet pada kartu yang muncul.
+5. Tekan tombol ikon AR untuk membuka mode AR jika perangkat mendukung.
 
-## Kontribusi
+## Materi Yang Ditampilkan
 
-Kontribusi diterima — silakan buat issue atau pull request. Jelaskan perubahan yang diusulkan dan sertakan screenshot atau rekaman singkat jika relevan.
+Aplikasi memuat informasi edukatif untuk:
 
-## Lisensi
+- Matahari
+- Merkurius
+- Venus
+- Bumi
+- Bulan
+- Mars
+- Jupiter
+- Saturnus
+- Uranus
+- Neptunus
 
-Lisensi belum ditentukan di repositori ini. Jika Anda ingin menambahkan lisensi, tambahkan file `LICENSE` dan perbarui README.
+## Catatan Pengembangan
 
-## Kontak
+- File model utama yang digunakan viewer adalah `assets/models/solar-ar.glb`.
+- Data planet berada di `lib/data/planet_data.dart`.
+- UI home screen berada di `lib/screens/home_screen.dart`.
+- UI AR viewer berada di `lib/screens/ar_viewer_screen.dart`.
+- Komponen kartu informasi berada di `lib/widgets/planet_info_card.dart`.
 
-Jika butuh bantuan atau ingin berdiskusi lebih jauh tentang pengembangan fitur AR, hubungi pemilik proyek atau buka issue di repositori.
+## Tujuan Pembelajaran
 
----
-
-_Dokumentasi ini dibuat otomatis oleh asisten pengembangan untuk memberikan ringkasan profesional proyek._
+Project ini menunjukkan penerapan grafika komputer dan Augmented Reality untuk visualisasi edukatif. Pengguna dapat melihat objek 3D, memahami posisi relatif planet, serta mempelajari fakta dasar tata surya melalui antarmuka yang interaktif.

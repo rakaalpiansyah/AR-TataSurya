@@ -21,7 +21,7 @@ class PlanetInfoCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       constraints: BoxConstraints(
-        maxHeight: size.height * 0.25,
+        maxHeight: size.height * 0.28,
         maxWidth: 560,
       ),
       margin: EdgeInsets.zero,
@@ -30,9 +30,9 @@ class PlanetInfoCard extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
           child: Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xE6101420),
+              color: const Color(0xEA07101D),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: Colors.white.withValues(alpha: 0.18),
@@ -61,7 +61,7 @@ class PlanetInfoCard extends StatelessWidget {
                             Text(
                               planet.name,
                               style: const TextStyle(
-                                fontSize: 20,
+                                fontSize: 21,
                                 fontWeight: FontWeight.w800,
                                 color: Colors.white,
                               ),
@@ -72,7 +72,7 @@ class PlanetInfoCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.cyanAccent.withValues(alpha: 0.88),
+                                color: const Color(0xFF42D7FF),
                               ),
                             ),
                           ],
@@ -94,7 +94,7 @@ class PlanetInfoCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -104,15 +104,15 @@ class PlanetInfoCard extends StatelessWidget {
                       _FactPill(label: 'Rotasi', value: planet.rotationPeriod),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Text(
                     planet.description,
-                    maxLines: 5,
+                    maxLines: 6,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.9),
-                      height: 1.38,
+                      color: const Color(0xFFE5EEF8),
+                      height: 1.42,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -138,13 +138,13 @@ class _FactPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 34),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      constraints: const BoxConstraints(minHeight: 38),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: const Color(0xFF101B2D),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.12),
+          color: Colors.white.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -157,7 +157,7 @@ class _FactPill extends StatelessWidget {
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              color: Colors.white.withValues(alpha: 0.56),
+              color: const Color(0xFF8EA0B7),
             ),
           ),
           const SizedBox(height: 2),
