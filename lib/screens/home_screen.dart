@@ -72,7 +72,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 14),
                     const Text(
-                      'Pilih planet, sentuh objek 3D, lalu baca fakta ringkasnya. Dirancang untuk presentasi UAS Augmented Reality dengan tema edukasi tata surya.',
+                      'Pilih planet, sentuh objek 3D, lalu baca fakta ringkasnya melalui pengalaman Augmented Reality bertema edukasi tata surya.',
                       style: TextStyle(
                         color: Color(0xFFB6C3D6),
                         fontSize: 15,
@@ -128,9 +128,9 @@ class HomeScreen extends StatelessWidget {
                     SizedBox(height: 10),
                     _FeatureItem(
                       icon: Icons.school_rounded,
-                      title: 'Siap presentasi UAS',
+                      title: 'Materi edukatif',
                       description:
-                          'Tampilan dibuat ringkas, modern, dan fokus pada demonstrasi pembelajaran AR.',
+                          'Informasi dibuat ringkas agar mudah dipahami saat mengeksplorasi model.',
                     ),
                   ],
                 ),

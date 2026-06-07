@@ -7,6 +7,6 @@ void main() {
 
     expect(find.text('AR Tata Surya'), findsOneWidget);
     expect(find.text('Mulai Eksplorasi AR'), findsOneWidget);
-    expect(find.text('Siap presentasi UAS'), findsOneWidget);
+    expect(find.text('Materi edukatif'), findsOneWidget);
   });
 }
